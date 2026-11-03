@@ -1,0 +1,71 @@
+{
+  "contract_version": "2026-09-16.1",
+  "strategy_id": "IVOL_FF3_MONTHLY",
+  "grain": "one row per PERMNO and formation_month",
+  "primary_key": ["PERMNO", "formation_month"],
+  "sample": {
+    "formation_start": "2000-01",
+    "formation_end": "2020-11",
+    "holding_start": "2000-02",
+    "holding_end": "2020-12",
+    "formation_months": 251
+  },
+  "universe": {
+    "authoritative_source": "IFE_term_stock_data.csv",
+    "formation_exchange_codes": [1, 2, 3],
+    "identifier": "PERMNO",
+    "ticker_is_join_key": false,
+    "outcome_month_survivor_refilter": false
+  },
+  "estimation": {
+    "window": "daily observations inside formation month t",
+    "minimum_daily_observations": 15,
+    "dependent_variable": "CRSP DlyRet - Fama-French RF",
+    "regressors": ["intercept", "Mkt-RF", "SMB", "HML"],
+    "daily_filters": {"ConditionalType": "RW", "DlyRetMissFlg": "NA"},
+    "required_design_rank": 4,
+    "ivol_daily": "sqrt(SSE/(n-1)); sample standard deviation of OLS residuals",
+    "ivol_annualized": "ivol_daily * sqrt(252)"
+  },
+  "signal": {
+    "ivol_decile": "monthly equal-count decile; 1=lowest IVOL and 10=highest IVOL",
+    "ivol_rank_pct": "monthly cross-sectional rank on [0,1]; higher is riskier",
+    "low_ivol_score": "1 - 2*ivol_rank_pct; higher is preferred/lower IVOL",
+    "tie_rule": "IVOL ascending, then PERMNO ascending for deciles",
+    "missing_policy": "never fill missing IVOL with zero",
+    "outcomes_in_signal_file": false
+  },
+  "rebalance_and_holding": {
+    "frequency": "monthly",
+    "formation_information_cutoff": "end of month t",
+    "first_eligible_holding_month": "t+1",
+    "holding_period_months": 1,
+    "overlapping_portfolios": false
+  },
+  "standalone_portfolio": {
+    "primary_constituent_weight": "equal weight within each IVOL decile",
+    "robustness_constituent_weight": "CRSP MthCap measured in formation month t",
+    "spread": "Q1 low IVOL minus Q10 high IVOL",
+    "combination_note": "final cross-strategy coefficient and final EW/VW rule are not imposed by the IVOL code"
+  },
+  "outcome": {
+    "primary_source": "professor ADJ_PRC",
+    "definition": "ADJ_PRC(t+1) / ADJ_PRC(t) - 1 using an exact adjacent-calendar-month self join",
+    "missing_policy": "exclude from that month's portfolio return; never fill zero",
+    "alternative_robustness_source": "CRSP monthly total return"
+  },
+  "performance": {
+    "mean_monthly_return": "arithmetic mean",
+    "annualized_mean_return": "12 * monthly arithmetic mean",
+    "annualized_volatility": "sqrt(12) * monthly sample standard deviation",
+    "annualized_sharpe_like": "sqrt(12) * raw monthly mean / monthly sample standard deviation; this matches the existing project output and is not an excess-return Sharpe unless RF is supplied",
+    "inference": ["IID t-statistic", "Newey-West t-statistic with lag 4"],
+    "additional_metrics": ["cumulative return", "CAGR", "maximum drawdown"]
+  },
+  "combination_interface": {
+    "formation_panel_join": ["PERMNO", "formation_month"],
+    "holding_panel_join": ["PERMNO", "holding_month"],
+    "recommended_feature": "low_ivol_score",
+    "interpretation": "risk penalty or tie-breaker rather than a high-weight standalone alpha"
+  }
+}

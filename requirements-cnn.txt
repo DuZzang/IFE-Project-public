@@ -1,0 +1,5 @@
+# Install the CUDA-enabled torch wheel separately from the official PyTorch index:
+# python -m pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130
+numpy==2.5.3
+pandas==3.0.5
+pyarrow==23.0.1
